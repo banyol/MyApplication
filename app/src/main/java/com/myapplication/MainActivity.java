@@ -4,48 +4,68 @@ import android.location.Location;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 
-import com.google.android.gms.location.DetectedActivity;
+import com.google.android.gms.maps.CameraUpdate;
+import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import io.nlopez.smartlocation.OnLocationUpdatedListener;
 import io.nlopez.smartlocation.SmartLocation;
 
 public class MainActivity extends FragmentActivity {
 
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
-    private double lat,lon;
+    Marker mMarker;
+    private double lat, lon;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        SmartLocation.getInstance().start(
-                this, new SmartLocation.OnLocationUpdatedListener() {
-                    public void onLocationUpdated(Location location, DetectedActivity detectedActivity) {
-                        // In here you have the location and the activity. Do whatever you want with them!
-
-                        lat = (location.getLatitude());
-                        lon = (location.getLongitude());
-                        setUpMapIfNeeded();
-
+        setUpMapIfNeeded();
+        SmartLocation.with(this).location()
+                .start(new OnLocationUpdatedListener() {
+                    @Override
+                    public void onLocationUpdated(Location location) {
+                        if (location != null){
+                            lat = location.getLatitude();
+                            lon = location.getLongitude();
+                            addMarkerAndMoveCameraPosition();
+                        }
                     }
                 });
-
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         setUpMapIfNeeded();
+        SmartLocation.with(this).location()
+                .start(new OnLocationUpdatedListener() {
+                    @Override
+                    public void onLocationUpdated(Location location) {
+                        if (location != null) {
+                            lat = location.getLatitude();
+                            lon = location.getLongitude();
+                            addMarkerAndMoveCameraPosition();
+                        }
+                    }
+                });
+    }
+
+    @Override
+    public void onBackPressed(){
+        super.onBackPressed();
+        SmartLocation.with(this).location().stop();
     }
 
 
     /**
      * Sets up the map if it is possible to do so (i.e., the Google Play services APK is correctly
-     * installed) and the map has not already been instantiated.. This will ensure that we only ever
-     * call {@link #setUpMap()} once when {@link #mMap} is not null.
+     * installed) and the map has not already been instantiated..
      * <p/>
      * If it isn't installed {@link SupportMapFragment} (and
      * {@link com.google.android.gms.maps.MapView MapView}) will show a prompt for the user to
@@ -58,25 +78,31 @@ public class MainActivity extends FragmentActivity {
      * method in {@link #onResume()} to guarantee that it will be called.
      */
     private void setUpMapIfNeeded() {
-        // Do a null check to confirm that we have not already instantiated the map.
+// Do a null check to confirm that we have not already instantiated the map.
         if (mMap == null) {
-            // Try to obtain the map from the SupportMapFragment.
+// Try to obtain the map from the SupportMapFragment.
             mMap = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map))
                     .getMap();
-            // Check if we were successful in obtaining the map.
+// Check if we were successful in obtaining the map.
             if (mMap != null) {
-                setUpMap();
+                if (lat != 0.0 && lon != 0.0)
+                    addMarkerAndMoveCameraPosition();
             }
         }
     }
 
     /**
-     * This is where we can add markers or lines, add listeners or move the camera. In this case, we
-     * just add a marker near Africa.
+     * This is where we can add markers or lines, add listeners or move the camera.
      * <p/>
      * This should only be called once and when we are sure that {@link #mMap} is not null.
      */
-    private void setUpMap() {
-        mMap.addMarker(new MarkerOptions().position(new LatLng(lat, lon)).title("Posisi Anda"));
+    private void addMarkerAndMoveCameraPosition(){
+        mMap.clear();
+        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(new LatLng(lat, lon), 14);
+        mMap.animateCamera(cameraUpdate);
+        mMarker = mMap.addMarker(
+                new MarkerOptions()
+                        .position(new LatLng(lat, lon))
+                        .draggable(false));
     }
-}
+} 
